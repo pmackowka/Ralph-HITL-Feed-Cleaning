@@ -97,16 +97,18 @@
     },
     {
       "id": 6,
-      "description": "report.py: agregacja liczników z pełnej listy sklasyfikowanych rekordów (z zadania 3/4) do JSON: row_counts (total/ok/repaired/rejected — sumują się do total) oraz osobno repaired_reasons i rejected_reasons (dict reason->count; UWAGA: te liczniki mogą przekraczać row_counts, bo jeden wiersz może mieć >1 reason — to musi być jawnie udokumentowane w strukturze/nazwach kluczy, nie tylko w kodzie). Wszystkie znane reason (price_format, negative_quantity, quantity_format, missing_sku, missing_name, missing_price, invalid_price, missing_quantity, invalid_quantity_type, duplicate_sku, malformed_row) obecne w wyniku nawet z count=0. Zapis do report.json + funkcja formatująca krótkie podsumowanie tekstowe (do wypisania na stdout w CLI, zadanie 7).",
+      "description": "report.py: agregacja liczników z pełnej listy ClassifiedRow (z zadania 3/4, po dedup) do JSON: row_counts (total/ok/repaired/rejected — sumują się do total) oraz osobno repaired_reasons i rejected_reasons (dict reason->count; UWAGA: te liczniki mogą przekraczać row_counts, bo jeden wiersz może mieć >1 reason w tej samej kategorii — jawnie udokumentowane w strukturze/nazwach kluczy, nie tylko w kodzie). ROZSTRZYGNIĘCIE DECYZJI (nie wynika wprost z zadania 3, podjęte pod nadzorem HITL po zamknięciu zadania 3): licznik buduj z PIĘCIU pól ClassifiedRow (sku/name/price/quantity/category, każde to FieldOutcome), NIE z płaskiej listy row.reasons — bo row.reasons to pełny audit trail wszystkich pól niezależnie od tego, czy dane pole zdecydowało o losie wiersza. Konkretnie: repaired_reasons zlicza reasons z pól o statusie REPAIRED WYŁĄCZNIE dla wierszy, gdzie row.status == REPAIRED; rejected_reasons zlicza reasons z pól o statusie REJECTED WYŁĄCZNIE dla wierszy, gdzie row.status == REJECTED, plus osobno Reason.DUPLICATE_SKU, jeśli jest obecny w row.reasons (dopisywany przez deduplicate_by_sku, nie należy do żadnego z pięciu pól). Reason z pola REPAIRED, które współwystępuje na wierszu ostatecznie REJECTED (z powodu innego pola), NIE jest liczony w żadnym z dwóch liczników — nie zadecydował o odrzuceniu wiersza, a policzenie go zepsułoby ręczną rekoncyliację (cel z CLAUDE.md: 'ile rekordów... wg jakiej reguły' = reguła, która faktycznie zdecydowała). Wszystkie znane reason (price_format, negative_quantity, quantity_format, missing_sku, missing_name, missing_price, invalid_price, missing_quantity, invalid_quantity_type, duplicate_sku, malformed_row) obecne w wyniku nawet z count=0. Zapis do report.json + funkcja formatująca krótkie podsumowanie tekstowe (do wypisania na stdout w CLI, zadanie 7).",
       "files": {
         "include": ["src/feed_cleaner/report.py", "tests/test_report.py"],
-        "exclude": ["src/feed_cleaner/cli.py"]
+        "exclude": ["src/feed_cleaner/cli.py", "src/feed_cleaner/classify.py"]
       },
       "stop_condition": "Cały feedback loop zielony; testy w test_report.py pokrywają każdy edge case niżej.",
       "edge_cases": [
         "0 rekordów wejściowych -> raport ze wszystkimi licznikami na 0, nie crashuje",
         "reason który się nie wydarzył w danym runie -> nadal obecny w JSON z count=0",
         "wiersz REPAIRED z 2 reasons (np. negative_quantity + quantity_format) -> każdy reason liczony osobno w repaired_reasons, ale wiersz liczy się raz w row_counts.repaired",
+        "wiersz z jednym polem REJECTED i jednym REPAIRED jednocześnie (row.status w efekcie REJECTED) -> liczy się WYŁĄCZNIE do rejected_reasons (przez pole REJECTED); reason z pola REPAIRED nie trafia do żadnego licznika (manifest z Kroku 0 tego przypadku nie testuje — to jest jedyne źródło prawdy dla tej reguły)",
+        "duplicate_sku pochodzi z row.reasons (nie z żadnego z pięciu pól) i liczy się do rejected_reasons dokładnie raz na odrzucony duplikat",
         "row_counts.ok + row_counts.repaired + row_counts.rejected == row_counts.total zawsze"
       ],
       "passes": false
