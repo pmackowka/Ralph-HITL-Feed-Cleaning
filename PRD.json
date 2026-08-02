@@ -11,7 +11,7 @@
       "edge_cases": [
         "mypy nie może failować na brakujących stubach pandas/pyarrow — skonfiguruj ignore_missing_imports dla tych modułów"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 2,
