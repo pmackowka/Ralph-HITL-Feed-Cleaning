@@ -39,7 +39,7 @@
         "name: '' -> REJECTED missing_name",
         "category: brak -> CLEAN, None, brak wpływu na status wiersza"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 3,
