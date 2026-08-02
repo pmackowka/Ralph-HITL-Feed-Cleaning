@@ -104,3 +104,15 @@ def parse_quantity(raw: str | None) -> FieldOutcome[int]:
     reasons.append(Reason.QUANTITY_FORMAT)
 
     return FieldOutcome(status=Status.REPAIRED, value=abs(int_from_float), reasons=reasons)
+
+
+def parse_sku(raw: str | None) -> FieldOutcome[str]:
+    if raw is None or not raw.strip():
+        return FieldOutcome(status=Status.REJECTED, value=None, reasons=[Reason.MISSING_SKU])
+    return FieldOutcome(status=Status.CLEAN, value=raw.strip())
+
+
+def parse_name(raw: str | None) -> FieldOutcome[str]:
+    if raw is None or not raw.strip():
+        return FieldOutcome(status=Status.REJECTED, value=None, reasons=[Reason.MISSING_NAME])
+    return FieldOutcome(status=Status.CLEAN, value=raw.strip())

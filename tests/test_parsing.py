@@ -1,7 +1,7 @@
 import pytest
 
 from feed_cleaner.models import Reason, Status
-from feed_cleaner.parsing import parse_price, parse_quantity
+from feed_cleaner.parsing import parse_name, parse_price, parse_quantity, parse_sku
 
 
 class TestParsePrice:
@@ -131,4 +131,44 @@ class TestParseQuantity:
         outcome = parse_quantity(raw)
         assert outcome.status is Status.REJECTED
         assert outcome.reasons == [Reason.MISSING_QUANTITY]
+        assert outcome.value is None
+
+
+class TestParseSku:
+    def test_non_blank_is_clean(self) -> None:
+        outcome = parse_sku("A1")
+        assert outcome.status is Status.CLEAN
+        assert outcome.value == "A1"
+        assert outcome.reasons == []
+
+    def test_strips_surrounding_whitespace(self) -> None:
+        outcome = parse_sku("  A1  ")
+        assert outcome.status is Status.CLEAN
+        assert outcome.value == "A1"
+
+    @pytest.mark.parametrize("raw", ["", "   ", None])
+    def test_blank_or_none_is_rejected_missing_sku(self, raw: str | None) -> None:
+        outcome = parse_sku(raw)
+        assert outcome.status is Status.REJECTED
+        assert outcome.reasons == [Reason.MISSING_SKU]
+        assert outcome.value is None
+
+
+class TestParseName:
+    def test_non_blank_is_clean(self) -> None:
+        outcome = parse_name("Czajnik")
+        assert outcome.status is Status.CLEAN
+        assert outcome.value == "Czajnik"
+        assert outcome.reasons == []
+
+    def test_strips_surrounding_whitespace(self) -> None:
+        outcome = parse_name("  Czajnik  ")
+        assert outcome.status is Status.CLEAN
+        assert outcome.value == "Czajnik"
+
+    @pytest.mark.parametrize("raw", ["", "   ", None])
+    def test_blank_or_none_is_rejected_missing_name(self, raw: str | None) -> None:
+        outcome = parse_name(raw)
+        assert outcome.status is Status.REJECTED
+        assert outcome.reasons == [Reason.MISSING_NAME]
         assert outcome.value is None

@@ -60,7 +60,7 @@
         "dwa wiersze z pustym SKU -> każdy niezależnie REJECTED missing_sku, brak duplicate_sku między nimi",
         "kolejność wejściowa musi być zachowana od loadera do klasyfikacji, inaczej dedup 'keep first' jest niedeterministyczny"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 4,
