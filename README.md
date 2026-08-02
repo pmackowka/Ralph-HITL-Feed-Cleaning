@@ -39,12 +39,17 @@ start, żeby zbudować zaufanie do promptu, zanim oddamy stery.
 - zadanie niezgodne z opisem/`edge_cases` w PRD.json
 - Ralph tknął pliki spoza `files.include` danego zadania
 
-## Tryb AFK (Away From Keyboard) — `afk-ralph.sh` + Docker sandbox
+## Tryb AFK (Away From Keyboard) — `afk-ralph.sh` + Docker Sandboxes (`sbx`)
 
 AFK = pętla działa bez nadzoru, z twardym limitem iteracji, w izolowanym
-środowisku (Docker sandbox), nie w gołym terminalu. Przechodzimy tu **dopiero
-gdy kilka iteracji HITL z rzędu zachowa się zgodnie z oczekiwaniami** —
-planowo po domknięciu zadań 2-3 (`PRD.json`) pod HITL, startując od zadania 4.
+środowisku, nie w gołym terminalu. Przechodzimy tu **dopiero gdy kilka
+iteracji HITL z rzędu zachowa się zgodnie z oczekiwaniami**.
+
+> **Uwaga — narzędzie się zmieniło.** Stare `docker sandbox run claude`
+> (opisane w notatce Ralpha) zostało **zdeprecjonowane i usunięte**. Następca
+> to samodzielny CLI `sbx` — **nie wymaga już Docker Desktop**. Poniższe
+> komendy zweryfikowane bezpośrednio przez `sbx --help` (nie z dokumentacji,
+> która bywa nieaktualna), 2026-08-02.
 
 Kroki logowania/uruchamiania poniżej wykonujesz Ty, we własnym terminalu —
 to interaktywne akcje (OAuth w przeglądarce), których nie da się zrobić z tej
@@ -52,51 +57,53 @@ sesji Claude Code.
 
 ### Setup środowiska (jednorazowo)
 
-1. Docker Desktop **4.50+** zainstalowany i faktycznie uruchomiony (ikona w pasku menu).
-2. Sprawdź dostępność subkomendy:
+1. Instalacja (macOS, Docker Desktop **niepotrzebny**):
    ```
-   docker sandbox --help
+   brew trust docker/tap
+   brew install docker/tap/sbx
    ```
-3. Pierwsze logowanie do Anthropic w sandboksie:
+2. Logowanie — **do Dockera, nie do Anthropica**:
    ```
-   docker sandbox run claude
+   sbx login
    ```
-   Dane logowania trzymane są w wolumenie Dockera — logujesz się raz, stan przeżywa między uruchomieniami (jeden sandbox na workspace).
-4. **Znany bug:** logowanie subskrypcją Pro/Max może się wywalić błędem "Invalid bearer token" (wtyczka sandboksa nadpisuje OAuth przez `apiKeyHelper`). Obejście:
+   Otwiera OAuth w przeglądarce, przy pierwszym razie pyta o domyślną politykę sieciową (Open/Balanced/Locked Down). Token zostaje na hoście, nie w sandboksie — persystuje między uruchomieniami.
+3. **Auth Claude w środku — potwierdzone empirycznie (2026-08-02):** `sbx run claude .` odpala świeżą, niezalogowaną instancję Claude Code w środku (`Not logged in · Run /login`) — dokładnie jak przy nowej instalacji, nie wymusza klucza API mimo że `sbx secret set -g anthropic` sugerowałby API key. Zwykłe `/login` w środku sandboksa i logowanie subskrypcją Pro/Max **działa** — rozliczanie zostaje jak dotychczas, nie per-token. Bonus: sandbox sam jest warstwą izolacji, więc Claude Code w środku domyślnie startuje w `bypass permissions on` — `--permission-mode acceptEdits` może być zbędne przy uruchamianiu w `sbx`.
+4. Jeśli chcemy, żeby AFK sam pushował na GitHub (nie tylko lokalny commit):
    ```
-   docker sandbox exec -it <nazwa> bash
-   ```
-   a w środku usuń linię `apiKeyHelper` z `~/.claude/settings.json`.
-5. Jeśli chcemy, żeby AFK sam pushował na GitHub (nie tylko lokalny commit), jednorazowo:
-   ```
-   sbx secret set -g github
+   gh auth token | sbx secret set -g github
    ```
 
 ### Dostęp do plików projektu
 
-Katalog roboczy montuje się w kontenerze pod tą samą ścieżką (bind mount) —
-zmiany lądują naprawdę na dysku hosta, w czasie rzeczywistym, widoczne od razu
-jako zwykły `git diff`, nic nie ginie po zamknięciu kontenera. Reszta systemu
-poza tym katalogiem jest niedostępna — to cała idea izolacji. Globalny
-`~/.claude/CLAUDE.md` i user-level skille **nie** ładują się w sandboksie —
-bez znaczenia dla nas, bo cała logika projektu siedzi w tutejszym
-`CLAUDE.md`/`PRD.json`.
+Domyślnie: bind mount, read-write — katalog roboczy widoczny w sandboksie,
+zmiany agenta lądują na hoście natychmiast, widoczne od razu jako zwykły
+`git diff`. Alternatywa: `--clone` (przy `sbx create`/`sbx run`) — agent
+dostaje prywatny klon repo w kontenerze, jego commity trafiają z powrotem
+przez git remote `sandbox-<name>` na hoście, zamiast dotykać working tree
+bezpośrednio. Reszta systemu poza workspace'em niedostępna.
 
-### Uruchomienie pętli AFK
+### Uruchomienie — komendy zweryfikowane, ale jeszcze bez `afk-ralph.sh`
 
-`afk-ralph.sh` zostanie dopisany do repo, gdy dojdziemy do tego etapu (po
-udanych iteracjach HITL na zadaniach 2-3). Będzie przyjmował limit iteracji
-jako argument, np.:
-
+Interaktywnie (jak `ralph-once.sh`, ale w sandboksie):
 ```
-./afk-ralph.sh 5
+sbx run claude .
 ```
 
-W środku: `docker sandbox run claude --permission-mode acceptEdits -p "..."`
-w pętli — tryb `-p` (headless/print) zamiast interaktywnego, bo nikt nie
-patrzy na żywo. Skrypt sam sprawdza w stdout sygnał
-`<promise>COMPLETE</promise>` i kończy się wcześniej, jeśli `PRD.json` jest
-już całe zrobione, zamiast czekać do limitu iteracji.
+Do pętli bez nadzoru prawdopodobnie potrzebujemy `create` (sandbox bez
+attachu) + `exec` (komenda non-interactive w środku), bo `sbx run` sam w
+sobie otwiera sesję interaktywną:
+```
+sbx create --name ralph-afk claude .          # raz, tworzy sandbox
+sbx exec ralph-afk claude --permission-mode acceptEdits -p "..."   # w pętli
+```
+Argumenty do samego agenta idą po separatorze `--` (np. `sbx run claude -- --continue`).
+
+**To jest hipoteza wynikająca z realnego `--help`, NIE potwierdzone
+end-to-end** — logowanie (krok 3 wyżej) już potwierdzone, ale `sbx exec` w
+pętli (bez attachu, z `-p`) jeszcze nie testowany na żywo. `sbx` nie ma
+własnego trybu headless, więc opieramy się na `-p` samego `claude`
+przekazanym przez `sbx exec`. `afk-ralph.sh` napiszę dopiero po tym, jak
+przetestujemy tę część razem.
 
 ## Kto co robi
 
