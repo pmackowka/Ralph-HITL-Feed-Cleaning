@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Dane projektu (generowane/lokalne, nie wersjonujemy)
+data/
+*.csv
+*.parquet
+progress.txt
+
+# macOS
+.DS_Store
+
+# Edytory / IDE
+.vscode/
+.idea/

@@ -1,0 +1,143 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "description": "Szkielet projektu: pyproject.toml (uv), zależności (pydantic>=2, pandas, pyarrow; dev: pytest, mypy, ruff), konfiguracja mypy --strict z ignore_missing_imports dla pandas.*/pyarrow.*, konfiguracja ruff, pusty pakiet src/feed_cleaner/ z __init__.py, jeden placeholder test żeby pytest miał co zebrać.",
+      "files": {
+        "include": ["pyproject.toml", "src/feed_cleaner/__init__.py", "tests/test_placeholder.py"],
+        "exclude": ["src/feed_cleaner/models.py", "src/feed_cleaner/parsing.py", "src/feed_cleaner/classify.py", "src/feed_cleaner/loader.py", "src/feed_cleaner/export.py", "src/feed_cleaner/report.py", "src/feed_cleaner/cli.py"]
+      },
+      "stop_condition": "Wszystkie cztery komendy muszą przejść OSOBNO (nie wystarczy sama zielona pytest): (1) `uv sync` bez błędów; (2) `uv run pytest` zielony (>=1 test); (3) `uv run mypy src` bez błędów; (4) `uv run ruff check .` bez błędów; dodatkowo `uv run python -c \"import feed_cleaner\"` działa.",
+      "edge_cases": [
+        "mypy nie może failować na brakujących stubach pandas/pyarrow — skonfiguruj ignore_missing_imports dla tych modułów"
+      ],
+      "passes": false
+    },
+    {
+      "id": 2,
+      "description": "Pydantic schema rekordu (sku, name, price, quantity wymagane; category, currency opcjonalne) + FieldOutcome (CLEAN/REPAIRED/REJECTED z reason) + czyste funkcje parse_price(raw) i parse_quantity(raw) w parsing.py. parse_price: bare dodatnia liczba (po strip) -> CLEAN; przecinek jako separator dziesiętny i/lub sufiks/prefiks waluty (zł/PLN, $/USD, €/EUR, case-insensitive) -> REPAIRED reason=price_format, currency wyekstrahowane; puste/nieparsowalne/nierozpoznana waluta/<=0 po parsowaniu -> REJECTED reason=missing_price (puste) albo invalid_price (reszta). parse_quantity: bare nieujemny int -> CLEAN; ujemny int -> REPAIRED reason=negative_quantity (abs); tekst zmiennoprzecinkowy o wartości całkowitej (np. '10.0', '10,0', '-10.0') -> REPAIRED reason=quantity_format (+ negative_quantity jeśli też ujemny); tekst zmiennoprzecinkowy nie-całkowity (np. '10.5') lub nienumeryczny -> REJECTED reason=invalid_quantity_type; puste -> REJECTED reason=missing_quantity. sku/name: puste/same białe znaki -> REJECTED reason=missing_sku/missing_name. category: puste -> CLEAN, wartość None (opcjonalne, nie wpływa na status wiersza).",
+      "files": {
+        "include": ["src/feed_cleaner/models.py", "src/feed_cleaner/parsing.py", "tests/test_parsing.py", "tests/test_models.py"],
+        "exclude": ["src/feed_cleaner/classify.py", "src/feed_cleaner/loader.py", "src/feed_cleaner/cli.py"]
+      },
+      "stop_condition": "Cały feedback loop zielony (`uv run pytest`, `uv run mypy src`, `uv run ruff check .`); testy w test_parsing.py i test_models.py pokrywają każdy edge case niżej.",
+      "edge_cases": [
+        "price: '29.99' -> CLEAN, currency=None",
+        "price: '29,99 zł' -> REPAIRED price_format, price=29.99, currency='PLN'",
+        "price: '29.99 zł' -> REPAIRED price_format (mimo że separator już poprawny, bo wymaga strippingu waluty)",
+        "price: '' / None -> REJECTED missing_price",
+        "price: 'abc' -> REJECTED invalid_price",
+        "price: '0' albo '-5' po sparsowaniu -> REJECTED invalid_price",
+        "quantity: '5' -> CLEAN",
+        "quantity: '-5' -> REPAIRED negative_quantity, quantity=5",
+        "quantity: '10.0' -> REPAIRED quantity_format, quantity=10",
+        "quantity: '-10.0' -> REPAIRED z dwoma reason: negative_quantity + quantity_format",
+        "quantity: '10.5' -> REJECTED invalid_quantity_type",
+        "quantity: 'dziesięć' -> REJECTED invalid_quantity_type",
+        "quantity: '' -> REJECTED missing_quantity",
+        "sku: '' albo '   ' -> REJECTED missing_sku",
+        "name: '' -> REJECTED missing_name",
+        "category: brak -> CLEAN, None, brak wpływu na status wiersza"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "description": "classify.py: reguła kompozycji wiersza na bazie wyników pól z zadania 2 — wiersz OK tylko jeśli WSZYSTKIE pola CLEAN; REPAIRED jeśli żadne pole nie jest REJECTED i co najmniej jedno REPAIRED (reasons = suma wszystkich reason z REPAIRED pól); REJECTED jeśli którekolwiek pole REJECTED (reasons = suma WSZYSTKICH reason z REJECTED pól, nie tylko pierwszego). Osobny przebieg dedup: po walidacji pól, w kolejności z pliku, dla każdego SKU (niepustego) zachowaj pierwsze wystąpienie z jego własnym statusem; każde kolejne wystąpienie tego samego SKU -> REJECTED, reason duplicate_sku DODANY do jego istniejących reasons (nawet jeśli poza tym był OK). Wiersze z pustym/brakującym SKU pomijane w dedup (już odrzucone jako missing_sku, nie liczone jako duplicate_sku).",
+      "files": {
+        "include": ["src/feed_cleaner/classify.py", "tests/test_classify.py"],
+        "exclude": ["src/feed_cleaner/loader.py", "src/feed_cleaner/export.py", "src/feed_cleaner/report.py", "src/feed_cleaner/cli.py"]
+      },
+      "stop_condition": "Cały feedback loop zielony; testy w test_classify.py pokrywają każdy edge case niżej.",
+      "edge_cases": [
+        "wiersz bez żadnych problemów -> OK",
+        "wiersz z tylko naprawialnymi problemami w >1 polu -> REPAIRED, reasons = suma wszystkich",
+        "wiersz z jednym REJECTED polem i jednym REPAIRED polem -> REJECTED, reasons zawiera oba",
+        "dwa wiersze ten sam SKU, oba poza tym OK -> pierwszy OK, drugi REJECTED duplicate_sku",
+        "trzy+ wiersze ten sam SKU -> tylko pierwszy zachowany, reszta REJECTED duplicate_sku",
+        "pierwsze wystąpienie SKU samo w sobie REJECTED (np. zły price) -> zostaje REJECTED ze swoim oryginalnym reason, NIE duplicate_sku; drugie wystąpienie mimo to REJECTED duplicate_sku",
+        "dwa wiersze z pustym SKU -> każdy niezależnie REJECTED missing_sku, brak duplicate_sku między nimi",
+        "kolejność wejściowa musi być zachowana od loadera do klasyfikacji, inaczej dedup 'keep first' jest niedeterministyczny"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "description": "loader.py: wczytuje CSV (UTF-8 z obsługą BOM) do uporządkowanej listy surowych wierszy (dict), zachowując kolejność z pliku, i przepuszcza przez pipeline z zadań 2-3 zwracając listę sklasyfikowanych rekordów. Nieznane/dodatkowe kolumny w CSV ignorowane. Wiersz strukturalnie uszkodzony (zła liczba kolumn względem nagłówka) -> loader.py tworzy dla niego gotowy sklasyfikowany rekord REJECTED reason=malformed_row BEZPOŚREDNIO, z pominięciem całego pipeline'u z zadań 2-3 (parse_price/parse_quantity/Pydantic model/classify.py w ogóle się nie uruchamiają dla takiego wiersza, bo granice pól są niewiarygodne) i BEZ wywalenia całego runu — reszta pliku wczytuje się normalnie.",
+      "files": {
+        "include": ["src/feed_cleaner/loader.py", "tests/test_loader.py"],
+        "exclude": ["src/feed_cleaner/export.py", "src/feed_cleaner/report.py", "src/feed_cleaner/cli.py"]
+      },
+      "stop_condition": "Cały feedback loop zielony; testy w test_loader.py (na plikach tymczasowych, tmp_path) pokrywają każdy edge case niżej.",
+      "edge_cases": [
+        "CSV tylko z nagłówkiem, 0 wierszy danych -> pusta lista wyników, brak wyjątku",
+        "plik z BOM (utf-8-sig) -> wczytuje się poprawnie",
+        "dodatkowa nieznana kolumna w CSV -> ignorowana, nie powoduje błędu",
+        "wiersz z brakującą/nadmiarową liczbą kolumn -> REJECTED malformed_row, reszta pliku wczytana normalnie",
+        "kolejność wierszy w wyniku identyczna z kolejnością w pliku"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "description": "export.py: zapis rekordów OK+REPAIRED (po naprawach, nie surowych) do Parquet przez pyarrow. Typy: price float64, quantity int64, sku/name string (non-nullable), category/currency string nullable. Rekordy REJECTED pomijane całkowicie (trafiają tylko do raportu, zadanie 6). Tworzy katalog docelowy jeśli nie istnieje.",
+      "files": {
+        "include": ["src/feed_cleaner/export.py", "tests/test_export.py"],
+        "exclude": ["src/feed_cleaner/report.py", "src/feed_cleaner/cli.py"]
+      },
+      "stop_condition": "Cały feedback loop zielony; testy w test_export.py pokrywają każdy edge case niżej.",
+      "edge_cases": [
+        "0 zaakceptowanych rekordów (wszystko REJECTED) -> zapisuje poprawny pusty plik Parquet z właściwym schematem, nie pomija zapisu",
+        "wartości w Parquet to wartości PO naprawie (np. znormalizowana cena, poprawiona ilość), nie surowy tekst z CSV",
+        "katalog wyjściowy nieistniejący -> tworzony automatycznie",
+        "category/currency = None dla części rekordów -> zapisywane jako null, nie crashuje"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "description": "report.py: agregacja liczników z pełnej listy sklasyfikowanych rekordów (z zadania 3/4) do JSON: row_counts (total/ok/repaired/rejected — sumują się do total) oraz osobno repaired_reasons i rejected_reasons (dict reason->count; UWAGA: te liczniki mogą przekraczać row_counts, bo jeden wiersz może mieć >1 reason — to musi być jawnie udokumentowane w strukturze/nazwach kluczy, nie tylko w kodzie). Wszystkie znane reason (price_format, negative_quantity, quantity_format, missing_sku, missing_name, missing_price, invalid_price, missing_quantity, invalid_quantity_type, duplicate_sku, malformed_row) obecne w wyniku nawet z count=0. Zapis do report.json + funkcja formatująca krótkie podsumowanie tekstowe (do wypisania na stdout w CLI, zadanie 7).",
+      "files": {
+        "include": ["src/feed_cleaner/report.py", "tests/test_report.py"],
+        "exclude": ["src/feed_cleaner/cli.py"]
+      },
+      "stop_condition": "Cały feedback loop zielony; testy w test_report.py pokrywają każdy edge case niżej.",
+      "edge_cases": [
+        "0 rekordów wejściowych -> raport ze wszystkimi licznikami na 0, nie crashuje",
+        "reason który się nie wydarzył w danym runie -> nadal obecny w JSON z count=0",
+        "wiersz REPAIRED z 2 reasons (np. negative_quantity + quantity_format) -> każdy reason liczony osobno w repaired_reasons, ale wiersz liczy się raz w row_counts.repaired",
+        "row_counts.ok + row_counts.repaired + row_counts.rejected == row_counts.total zawsze"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "description": "cli.py: argparse, flagi --input (wymagana, ścieżka do CSV) i --output-dir (domyślnie 'output/'). Spina loader -> classify -> export (Parquet) -> report (JSON + skrót na stdout). Zapisuje output-dir/clean.parquet i output-dir/report.json. Dodaje [project.scripts] feed-cleaner = feed_cleaner.cli:main w pyproject.toml. Kod wyjścia 0 przy sukcesie nawet jeśli część rekordów odrzucona (to normalne zachowanie, nie błąd CLI); niezerowy kod wyjścia tylko przy błędach użycia (zły argument, brak pliku wejściowego).",
+      "files": {
+        "include": ["src/feed_cleaner/cli.py", "pyproject.toml", "tests/test_cli.py"],
+        "exclude": []
+      },
+      "stop_condition": "Cały feedback loop zielony; `uv run feed-cleaner --input <fixture>.csv --output-dir <tmp>` działa end-to-end i tworzy oba pliki wyjściowe; testy w test_cli.py pokrywają każdy edge case niżej.",
+      "edge_cases": [
+        "--input wskazuje na nieistniejący plik -> czytelny komunikat na stderr, niezerowy exit code, brak surowego tracebacku",
+        "--output-dir nieistniejący -> tworzony automatycznie",
+        "plik wejściowy pusty (tylko nagłówek) -> run kończy się sukcesem, pliki wyjściowe puste/zerowe",
+        "sukces z częścią odrzuconych rekordów -> exit code 0"
+      ],
+      "passes": false
+    },
+    {
+      "id": 8,
+      "description": "Polish: README.md z instrukcją instalacji (uv sync) i przykładowym uruchomieniem CLI, opisem plików wyjściowych (clean.parquet, report.json). Finalny przegląd: usunięcie martwego kodu/TODO, potwierdzenie że `uv run pytest`, `uv run mypy src`, `uv run ruff check .` przechodzą razem jako jedna sekwencja.",
+      "files": {
+        "include": ["README.md"],
+        "exclude": ["src/feed_cleaner/", "tests/"]
+      },
+      "stop_condition": "`uv run pytest && uv run mypy src && uv run ruff check .` — cała sekwencja zielona w jednym przebiegu; README zawiera działający przykład komendy.",
+      "edge_cases": [
+        "N/A — zadanie porządkowe, ale nie może wprowadzić regresji w żadnym z wcześniejszych zadań"
+      ],
+      "passes": false
+    }
+  ]
+}

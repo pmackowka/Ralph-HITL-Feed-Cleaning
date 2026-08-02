@@ -35,6 +35,25 @@ Zanim cokolwiek zostanie zautomatyzowane bez nadzoru (AFK, Docker sandbox) — n
 5. Po każdej iteracji: przegląd diffa i commita, zanim uruchomię kolejną — to jest sedno HITL, uczysz się, jak pętla się zachowuje, zanim oddasz jej stery.
 6. Dopiero gdy kilka iteracji z rzędu zachowuje się zgodnie z oczekiwaniami → przejście do `afk-ralph.sh` w Docker sandboksie (`docker sandbox run claude`), z limitem iteracji.
 
+## Oczekiwana jakość kodu
+
+Ten projekt to CLI klasy "mały production-lite tool" — nie jednorazowy prototyp,
+nie biblioteka publiczna. Konkretnie:
+
+- Pełne typowanie na wszystkich publicznych funkcjach/metodach; `mypy --strict`
+  (patrz pyproject.toml) musi przechodzić bez błędów.
+- Każdy moduł ma testy jednostkowe pokrywające happy path + WSZYSTKIE edge_cases
+  wymienione dla danego zadania w PRD.json — nie tylko happy path.
+- Reguły/powody odrzuceń i napraw jako nazwane stałe (nie stringi rozrzucone
+  po kodzie).
+- Małe, pojedynczej odpowiedzialności funkcje i moduły — łatwe do testowania
+  w izolacji (patrz podział parsing.py / classify.py / loader.py).
+- Nie projektuj pod publiczne API ani wsteczną kompatybilność — kod może się
+  swobodnie zmieniać między iteracjami Ralpha.
+- Docstringi tylko tam, gdzie zachowanie nieoczywiste (np. reguła "keep first"
+  przy duplikatach SKU, rozróżnienie row-level vs reason-level liczników
+  w raporcie) — nie opisuj oczywistości.
+
 ## Następny krok
 
 Gdy ten zarys zaakceptowany — przygotowanie gotowego promptu startowego do wklejenia w nowej sesji Claude Code (plan mode), obejmującego kroki 1-6 powyżej.
