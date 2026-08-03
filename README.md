@@ -127,6 +127,17 @@ odniesienia "sprzed pętli". `git log`/`git diff` z zapisem `A..B` pokazują
 wszystko, co się zmieniło MIĘDZY dwoma punktami, więc nie musisz sprawdzać
 commitów jeden po drugim.
 
+### Jeśli w trakcie AFK skończy się limit sesji Pro/Max
+
+```bash
+git status                              # cokolwiek niescommitowanego wisi po przerwanej iteracji?
+git diff                                # jeśli tak — dokładna treść tych zmian
+git log --oneline -3                    # ostatni FAKTYCZNY commit — na czym realnie stoimy
+git stash                               # opcja A: schowaj niescommitowane zmiany na bok (odzyskiwalne później: git stash pop)
+git checkout -- .                       # opcja B: odrzuć niescommitowane zmiany, zacznij to zadanie od zera
+./afk-ralph.sh 5                        # po decyzji — po prostu odpal pętlę ponownie, gdy limit się zresetuje
+```
+
 AFK = pętla robi wiele zadań z rzędu **bez Twojego udziału**, z twardym
 limitem iteracji jako zabezpieczeniem ("nie więcej niż N prób, potem stop
 niezależnie od tego, co się dzieje"). Robimy to w izolowanym środowisku
