@@ -3,6 +3,43 @@
 Projekt testowy do nauki metody Ralpha (autonomiczna pętla kodowania z Claude Code).
 Pełna specyfikacja i metodologia: `CLAUDE.md`. Lista zadań: `PRD.json`.
 
+## `feed-cleaner` — instalacja i uruchomienie
+
+Sam produkt zbudowany przez pętlę Ralpha: mały CLI, który wczytuje "brudny"
+feed produktowy w CSV (duplikaty SKU, ceny jako tekst z przecinkiem/walutą,
+brakujące pola, ujemne ilości, złe typy), naprawia to, co da się naprawić
+automatycznie, odrzuca resztę z podanym powodem, i eksportuje wynik.
+
+### Instalacja
+
+```bash
+uv sync
+```
+
+### Przykładowe uruchomienie
+
+```bash
+uv run feed-cleaner --input data/raw/feed.csv --output-dir output/
+```
+
+- `--input` (wymagane) — ścieżka do wejściowego pliku CSV.
+- `--output-dir` (opcjonalne, domyślnie `output/`) — katalog na wyniki;
+  tworzony automatycznie, jeśli nie istnieje.
+
+Kod wyjścia `0` oznacza sukces, nawet jeśli część rekordów została odrzucona
+(to normalne zachowanie danych, nie błąd CLI) — niezerowy kod wyjścia
+sygnalizuje wyłącznie błąd użycia (np. nieistniejący plik wejściowy).
+
+### Pliki wyjściowe
+
+- `clean.parquet` — zaakceptowane rekordy (status OK lub REPAIRED) po
+  naprawach, w formacie Parquet. Odrzucone rekordy (REJECTED) w ogóle się
+  tu nie znajdują — trafiają wyłącznie do raportu jakości poniżej.
+- `report.json` — raport jakości danych: liczniki `row_counts`
+  (total/ok/repaired/rejected) oraz osobno `repaired_reasons` i
+  `rejected_reasons` (liczba wystąpień każdego powodu naprawy/odrzucenia).
+  Skrót tego raportu jest też wypisywany na stdout po każdym uruchomieniu.
+
 ## Co to w ogóle jest Ralph i po co te dwa tryby
 
 Ralph to ten sam prompt uruchamiany w kółko: agent czyta listę zadań (`PRD.json`),

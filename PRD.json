@@ -140,7 +140,7 @@
       "edge_cases": [
         "N/A — zadanie porządkowe, ale nie może wprowadzić regresji w żadnym z wcześniejszych zadań"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }
