@@ -16,6 +16,9 @@ dev = [
     "ruff",
 ]
 
+[project.scripts]
+feed-cleaner = "feed_cleaner.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

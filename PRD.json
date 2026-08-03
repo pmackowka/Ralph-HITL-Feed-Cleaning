@@ -127,7 +127,7 @@
         "plik wejściowy pusty (tylko nagłówek) -> run kończy się sukcesem, pliki wyjściowe puste/zerowe",
         "sukces z częścią odrzuconych rekordów -> exit code 0"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 8,
