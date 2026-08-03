@@ -64,9 +64,20 @@ po cichu zawęzić zakres i "ogłosić zwycięstwo" przedwcześnie. HITL to spos
 
 ### Co sprawdzić po każdej iteracji i dlaczego
 
+Ściąga — same komendy git do przeglądu jednego commita:
+```bash
+git log --oneline -5        # orientacja: co ostatnio się działo w historii
+git show --stat HEAD        # SAME NAZWY plików zmienionych w ostatnim commicie
+git show HEAD                # PEŁNY diff ostatniego commita — dokładnie co się zmieniło, linijka po linijce
+git diff HEAD~1 HEAD         # to samo co wyżej, inny zapis (przydatne gdy chcesz porównać dowolne dwa punkty)
+```
+
 - `git show --stat HEAD` — jakie pliki zmienione. Sprawdzasz, czy Ralph
   ruszył tylko to, co miał w zakresie zadania (`files.include`), a nie
   poszedł "przy okazji" majstrować gdzie indziej.
+- `git show HEAD` — pełny diff, nie tylko lista plików. To jest to, co
+  naprawdę chcesz przeczytać: dokładna treść zmian, linia po linii, ze
+  znakiem `+`/`-` przy każdej dodanej/usuniętej linijce.
 - `cat progress.txt` — notatka Ralpha o tym, co zrobił i jakie decyzje podjął.
   To jego "pamięć" między iteracjami — czytasz ją, żeby wiedzieć, czy trafił
   na coś niejasnego, co wymaga Twojej decyzji, zanim pójdzie dalej.
@@ -276,6 +287,26 @@ Jeśli pętla przeleciała wszystkie iteracje i nigdy nie zobaczyła sygnału
 ukończenia, ta linijka wypisuje się na sam koniec — informacja dla Ciebie,
 że PRD nie jest jeszcze skończone i trzeba albo podnieść limit, albo
 sprawdzić, co poszło nie tak (np. przez `progress.txt` i `git log`).
+
+### Co sprawdzić po pętli AFK (może być kilka commitów naraz)
+
+Różnica względem HITL: jedno uruchomienie `./afk-ralph.sh 5` może zrobić
+do 5 commitów, zanim znów na to spojrzysz — więc przeglądasz ZAKRES, nie
+pojedynczy commit. Zapisz sobie punkt startowy PRZED odpaleniem pętli:
+
+```bash
+start=$(git rev-parse HEAD)                 # zapamiętaj, gdzie byliśmy PRZED pętlą
+./afk-ralph.sh 5                             # odpal pętlę
+git log --oneline "$start"..HEAD             # które commity dodała ta pętla, w skrócie
+git diff "$start"..HEAD --stat               # szybki przegląd: ile plików, ile linii, bez treści
+git diff "$start"..HEAD                      # PEŁNY diff wszystkich zmian z całej pętli naraz
+uv run pytest && uv run mypy src && uv run ruff check .   # niezależna weryfikacja stanu na końcu
+```
+
+`git rev-parse HEAD` wypisuje pełny hash aktualnego commita — to Twój punkt
+odniesienia "sprzed pętli". `git log`/`git diff` z zapisem `A..B` pokazują
+wszystko, co się zmieniło MIĘDZY dwoma punktami, więc nie musisz sprawdzać
+commitów jeden po drugim.
 
 ## Kto co robi
 
