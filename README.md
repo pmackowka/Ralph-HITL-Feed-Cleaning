@@ -1,7 +1,15 @@
 # Ralph — CLI do czyszczenia feedu produktowego
 
-Projekt testowy do nauki metody Ralpha (autonomiczna pętla kodowania z Claude Code).
-Pełna specyfikacja i metodologia: `CLAUDE.md`. Lista zadań: `PRD.json`.
+Narzędzie do czyszczenia i walidacji feedów produktowych z e-commerce: wczytuje
+"brudny" feed CSV (duplikaty SKU, błędne ceny, ujemne ilości, brakujące pola),
+naprawia to, co da się bezpiecznie naprawić automatycznie, a resztę odrzuca
+z podanym powodem. Wynik (`clean.parquet` + raport jakości) można dalej
+przetransformować do formatu czytanego przez Google Merchant Center (TSV/XML)
+i na tej podstawie uruchomić kampanię produktową w Google Ads.
+
+Projekt zbudowany metodą Ralpha (autonomiczna pętla kodowania z Claude Code)
+— metodologia i specyfikacja: `CLAUDE.md`, lista zadań: `PRD.json`, instrukcja
+pracy z gotowym narzędziem: `WORKFLOW.md`.
 
 ## `feed-cleaner` — instalacja i uruchomienie
 
@@ -13,7 +21,7 @@ automatycznie, odrzuca resztę z podanym powodem, i eksportuje wynik.
 ### Instalacja
 
 ```bash
-uv sync
+uv sync   # raz na start / po zmianie zależności — nie trzeba przed każdym uruchomieniem, uv run sam dosynchronizuje
 ```
 
 ### Przykładowe uruchomienie
