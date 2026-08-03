@@ -3,6 +3,35 @@
 Ten plik to instrukcje obsługi gotowego narzędzia `feed-cleaner` (nie pętli
 Ralpha — to opisuje `README.md`). Format: komenda, potem krótkie wyjaśnienie.
 
+## Skąd się bierze co — drzewko
+
+```
+data/raw/
+├── feed.csv                    # wejście: syntetyczny "brudny" feed (dane testowe)
+└── feed_manifest.json          # STATYCZNY ground truth — ile błędów każdego typu wstrzyknął generator
+
+scripts/
+└── generate_synthetic_feed.py  # tworzy OBA pliki powyżej NA RAZ, RAZEM, ZANIM cokolwiek innego się dzieje
+
+src/feed_cleaner/                # sam CLI — czyta feed.csv, produkuje wyniki niżej
+├── loader.py / parsing.py / classify.py / export.py / report.py / cli.py
+
+output/                          # DYNAMICZNE — powstaje PO KAŻDYM uruchomieniu CLI, nadpisywane za każdym razem
+├── clean.parquet                # zaakceptowane rekordy po naprawie
+└── report.json                  # to, co CLI SAMO naliczyło — dopiero TO porównujesz z manifestem
+```
+
+**Najważniejsze rozróżnienie:** `feed_manifest.json` powstaje RAZ, PRZED wszystkim,
+tylko dla TEGO JEDNEGO syntetycznego pliku testowego — to "odpowiedzi z klucza",
+znane z góry, bo błędy sam wstrzyknął generator. Dla prawdziwego feedu od
+dostawcy takiego pliku NIGDY nie będzie — nikt nie zna błędów z góry. `report.json`
+to coś zupełnie innego: CLI liczy go SAM, za każdym razem od nowa, dla dowolnego
+pliku wejściowego, bez wiedzy o "prawidłowej odpowiedzi". Porównanie manifest
+↔ report (Scenariusz "mam plik testowy z gotowym manifestem" niżej) działa
+wyłącznie dlatego, że mamy oba na raz dla tego samego pliku testowego — to
+sposób sprawdzenia, czy CLI się nie myli, nie normalny krok pracy z prawdziwymi
+danymi (ten opisuje Scenariusz 1 niżej).
+
 ## Scenariusz: nowy plik CSV trafił do `data/raw/` (prawdopodobnie brudny)
 
 1. Sprawdź, że plik faktycznie tam jest i jak się nazywa:
