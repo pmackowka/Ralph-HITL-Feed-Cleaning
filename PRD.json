@@ -111,7 +111,7 @@
         "duplicate_sku pochodzi z row.reasons (nie z żadnego z pięciu pól) i liczy się do rejected_reasons dokładnie raz na odrzucony duplikat",
         "row_counts.ok + row_counts.repaired + row_counts.rejected == row_counts.total zawsze"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,
