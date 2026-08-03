@@ -77,7 +77,7 @@
         "wiersz z brakującą/nadmiarową liczbą kolumn -> REJECTED malformed_row, reszta pliku wczytana normalnie",
         "kolejność wierszy w wyniku identyczna z kolejnością w pliku"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 5,
