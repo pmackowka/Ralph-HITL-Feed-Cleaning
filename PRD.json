@@ -93,7 +93,7 @@
         "katalog wyjściowy nieistniejący -> tworzony automatycznie",
         "category/currency = None dla części rekordów -> zapisywane jako null, nie crashuje"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 6,
