@@ -98,13 +98,29 @@ po cichu zawęzić zakres i "ogłosić zwycięstwo" przedwcześnie. HITL to spos
 ### Ściąga — same komendy
 
 ```bash
+# --- w ZWYKŁYM TERMINALU (host) ---
 brew trust docker/tap                       # zaufaj paczkom Dockera w Homebrew
 brew install docker/tap/sbx                 # zainstaluj sbx (bez Docker Desktop)
 sbx login                                   # zaloguj do Dockera, wybierz politykę sieci (Balanced)
-sbx run claude .                            # utwórz sandbox; w środku /login do Claude (Pro/Max działa)
+sbx run claude .                            # tworzy sandbox i WCHODZI w interaktywną sesję Claude w środku
+
+# --- teraz jesteś W SESJI CLAUDE, wewnątrz sandboksa ---
+/login                                      # zaloguj Claude Pro/Max (w środku sandboksa)
+/exit                                        # WYJDŹ z powrotem do zwykłego shella, zanim pójdziesz dalej
+
+# --- z powrotem w ZWYKŁYM TERMINALU (host) ---
+brew install gh                             # jeśli `which gh` nic nie pokazuje — potrzebne do kroku niżej
+gh auth login                               # interaktywne logowanie do GitHub (przeglądarka + jednorazowy kod)
 gh auth token | sbx secret set -g github    # opcjonalnie: dostęp do push na GitHub
-sbx ls                                      # sprawdź nazwę i status sandboksa
-./afk-ralph.sh 5                            # odpal pętlę AFK, limit 5 iteracji
+sbx stop claude-Ralph-HITL-Feed-Cleaning    # zatrzymaj — sandbox już działał PRZED sekretem, może go nie podłapać bez restartu
+sbx run claude .                            # odpal ponownie — znów WCHODZISZ w sesję Claude w środku
+
+# --- znowu W SESJI CLAUDE — sprawdź że działa (np. git push), potem: ---
+/exit                                        # WYJDŹ z powrotem, zanim odpalisz pętlę AFK
+
+# --- z powrotem w ZWYKŁYM TERMINALU (host) ---
+sbx ls                                       # sprawdź nazwę i status sandboksa
+./afk-ralph.sh 5                            # odpal pętlę AFK, limit 5 iteracji (to też host — headless, przez sbx exec)
 ```
 
 ### Co sprawdzić po pętli AFK (może być kilka commitów naraz)
@@ -196,16 +212,41 @@ sesji Claude Code.
    "bypass permissions" (zero pytań o zgodę na edycje) — to dlatego w
    `afk-ralph.sh` niżej nie ma już `--permission-mode acceptEdits`, jak
    miał `ralph-once.sh`.
-4. Jeśli chcemy, żeby AFK sam pushował na GitHub (nie tylko lokalny commit):
+4. Jeśli chcemy, żeby AFK sam pushował na GitHub (nie tylko lokalny commit) —
+   **uruchom WSZYSTKO poniżej w zwykłym terminalu (nowa zakładka basha), NIE
+   wewnątrz sesji Claude, która już siedzi w sandboksie** (`sbx`/`gh` to
+   komendy hosta, nie istnieją w środku sandboksa — sandboksowa sesja Claude
+   sama to odrzuci, dokładnie tak jak zobaczysz, jeśli spróbujesz).
+
+   Najpierw upewnij się, że masz `gh` (GitHub CLI) i że jest zalogowane —
+   `which gh` pokaże pustkę, jeśli nie ma:
+   ```
+   brew install gh
+   gh auth login
+   ```
+   `gh auth login` pyta po kolei: GitHub.com → HTTPS → logowanie przez
+   przeglądarkę → wypisze jednorazowy kod w terminalu (skopiuj go, wklej na
+   stronie GitHuba, kliknij Authorize). Potwierdź `gh auth status` — ma
+   pokazać "Logged in as...".
+
+   Dopiero teraz właściwy sekret:
    ```
    gh auth token | sbx secret set -g github
    ```
    **Co to robi:** `gh auth token` wypisuje Twój token dostępu do GitHuba
-   (z Twojego już zalogowanego `gh` CLI). `sbx secret set -g github`
+   (z już zalogowanego `gh` CLI). `sbx secret set -g github`
    zapisuje go jako "sekret" dostępny globalnie dla wszystkich sandboksów —
    `sbx` wstrzykuje go do środka w bezpieczny sposób (agent może go użyć do
    pushowania, ale sam token nigdy nie ląduje jako zwykły plik widoczny w
    systemie plików kontenera).
+
+   **Jeśli sandbox już działał, zanim ustawiłeś sekret** (tak jak nasz
+   `claude-Ralph-HITL-Feed-Cleaning`) — zrestartuj go, żeby na pewno podłapał
+   nowy sekret:
+   ```
+   sbx stop claude-Ralph-HITL-Feed-Cleaning
+   sbx run claude .
+   ```
 
 ### Dostęp do plików projektu
 
