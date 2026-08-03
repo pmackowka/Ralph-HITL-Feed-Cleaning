@@ -34,6 +34,7 @@ Zanim cokolwiek zostanie zautomatyzowane bez nadzoru (AFK, Docker sandbox) — n
    - Commituje, aktualizuje `progress.txt`.
 5. Po każdej iteracji: przegląd diffa i commita, zanim uruchomię kolejną — to jest sedno HITL, uczysz się, jak pętla się zachowuje, zanim oddasz jej stery.
 6. Dopiero gdy kilka iteracji z rzędu zachowuje się zgodnie z oczekiwaniami → przejście do `afk-ralph.sh` w Docker sandboksie (`docker sandbox run claude`), z limitem iteracji.
+7. **Zakres HITL vs AFK:** nadzór i pytanie o zgodę opisane w tej sekcji dotyczą WYŁĄCZNIE `ralph-once.sh` (sesja interaktywna, `--permission-mode acceptEdits`, człowiek siedzi przy terminalu i odpowiada na prompty). `afk-ralph.sh` działa w trybie bezobsługowym (`-p --dangerously-skip-permissions`) — tam narzędzia (Write/Edit/Bash) mają z góry przyznane uprawnienia i model NIE WOLNO pytać o zgodę ani czekać na potwierdzenie; zadanie musi dokończyć w jednej odpowiedzi. Model nie rozpoznaje sam, pod którym skryptem aktualnie działa — jedynym sygnałem jest treść promptu w danym skrypcie, więc to on (nie ogólna kultura HITL opisana wyżej) rozstrzyga o zachowaniu.
 
 ## Oczekiwana jakość kodu
 

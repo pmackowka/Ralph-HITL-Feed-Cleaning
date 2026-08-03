@@ -12,7 +12,8 @@ fi
 for ((i=1; i<=$1; i++)); do
   echo "--- Iteracja $i/$1 ---"
 
-  result=$(sbx exec -w "$WORKDIR" "$SANDBOX" claude -p "@PRD.json @progress.txt @CLAUDE.md \
+  result=$(sbx exec -w "$WORKDIR" "$SANDBOX" claude -p --dangerously-skip-permissions "@PRD.json @progress.txt @CLAUDE.md \
+UWAGA: to jest sesja bezobsługowa (AFK), nikt nie odpowie na pytania. Masz z góry przyznane pełne uprawnienia do Write/Edit/Bash — NIE pytaj o zgodę, NIE proś o potwierdzenie i NIE zatrzymuj się w oczekiwaniu na aprobatę, nawet jeśli CLAUDE.md opisuje kulturę HITL (ta dotyczy wyłącznie ralph-once.sh, patrz punkt 7 sekcji HITL w CLAUDE.md). Wykonaj poniższe zadanie do końca w tej samej odpowiedzi. \
 1. Przeczytaj PRD.json, progress.txt i CLAUDE.md. \
 2. Znajdź w PRD.json pierwsze zadanie z passes: false i zaimplementuj TYLKO je — nie ruszaj plików wykluczonych w polu files.exclude ani plików należących do innych zadań. \
 3. Przed commitem uruchom WSZYSTKIE feedback loops: uv run pytest, uv run mypy src, uv run ruff check . — jeśli którykolwiek nie przechodzi, napraw i uruchom ponownie. NIE commituj czerwonego stanu. \
