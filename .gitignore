@@ -13,6 +13,7 @@ htmlcov/
 
 # Dane projektu (generowane/lokalne, nie wersjonujemy)
 data/
+output/
 *.csv
 *.parquet
 progress.txt
