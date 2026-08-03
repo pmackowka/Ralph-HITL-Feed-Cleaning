@@ -24,6 +24,18 @@ Code — patrz "Kto co robi" na końcu tego pliku.
 
 ## Tryb HITL (Human In The Loop) — `ralph-once.sh`
 
+### Ściąga — same komendy
+
+```bash
+./ralph-once.sh                                            # 1 iteracja: Ralph robi jedno zadanie z PRD.json
+# ...poczekaj aż sesja odpowie i skończy...
+/exit                                                       # albo Ctrl+D — zamknij sesję przed kolejnym uruchomieniem
+git show --stat HEAD                                       # co zmienił ostatni commit
+cat progress.txt                                            # notatka Ralpha o tej iteracji
+uv run pytest && uv run mypy src && uv run ruff check .    # niezależna weryfikacja, nie ufaj samemu commitowi
+./ralph-once.sh                                             # jeśli OK — kolejna iteracja
+```
+
 HITL = człowiek patrzy na każdą iterację na żywo, zanim pozwoli odpalić
 kolejną. Dlaczego to ważne: agent bez nadzoru, przy niejasnym zadaniu, potrafi
 po cichu zawęzić zakres i "ogłosić zwycięstwo" przedwcześnie. HITL to sposób,
@@ -71,6 +83,18 @@ po cichu zawęzić zakres i "ogłosić zwycięstwo" przedwcześnie. HITL to spos
 - Ralph tknął pliki spoza `files.include` danego zadania
 
 ## Tryb AFK (Away From Keyboard) — `afk-ralph.sh` + Docker Sandboxes (`sbx`)
+
+### Ściąga — same komendy
+
+```bash
+brew trust docker/tap                       # zaufaj paczkom Dockera w Homebrew
+brew install docker/tap/sbx                 # zainstaluj sbx (bez Docker Desktop)
+sbx login                                   # zaloguj do Dockera, wybierz politykę sieci (Balanced)
+sbx run claude .                            # utwórz sandbox; w środku /login do Claude (Pro/Max działa)
+gh auth token | sbx secret set -g github    # opcjonalnie: dostęp do push na GitHub
+sbx ls                                      # sprawdź nazwę i status sandboksa
+./afk-ralph.sh 5                            # odpal pętlę AFK, limit 5 iteracji
+```
 
 AFK = pętla robi wiele zadań z rzędu **bez Twojego udziału**, z twardym
 limitem iteracji jako zabezpieczeniem ("nie więcej niż N prób, potem stop
