@@ -7,7 +7,7 @@
 Mały CLI (Python), który:
 
 1. Wczytuje syntetyczny feed produktowy w CSV (celowo "brudny" — duplikaty SKU, ceny jako tekst z przecinkiem/walutą, brakujące pola, ujemne ilości, złe typy).
-2. Waliduje każdy rekord pole po polu i klasyfikuje: `CLEAN` / `REPAIRED` / `REJECTED`. Schemat `ProductRecord` (Pydantic, `models.py`) opisuje kontrakt docelowy, ale pipeline go nie konstruuje — walidacja per-pole zachowuje informację, KTÓRE pole zawiodło (patrz docstring `classify_row`).
+2. Waliduje każdy rekord pole po polu i klasyfikuje: `OK` / `REPAIRED` / `REJECTED`. Walidacja jest per-pole, nie przez konstrukcję `ProductRecord`, bo tylko tak wiadomo, KTÓRE pole zawiodło (patrz docstring `classify_row`). `ProductRecord` (Pydantic, `models.py`) jest kontraktem wyjścia: `export.py` wyprowadza z niego schemat Parquet i przepuszcza przez niego każdy zaakceptowany wiersz tuż przed zapisem.
 3. Czyści to, co da się naprawić automatycznie (np. `"29,99 zł"` → `29.99`), odrzuca resztę z podanym powodem.
 4. Eksportuje wynik do Parquet (czyste dane) + osobny raport jakości danych (ile rekordów OK/naprawiono/odrzucono, wg jakiej reguły).
 

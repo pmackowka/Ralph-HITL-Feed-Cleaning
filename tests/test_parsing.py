@@ -7,7 +7,7 @@ from feed_cleaner.parsing import parse_name, parse_price, parse_quantity, parse_
 class TestParsePrice:
     def test_bare_positive_number_is_clean(self) -> None:
         outcome = parse_price("29.99")
-        assert outcome.status is Status.CLEAN
+        assert outcome.status is Status.OK
         assert outcome.reasons == []
         assert outcome.value is not None
         assert outcome.value.price == pytest.approx(29.99)
@@ -73,7 +73,7 @@ class TestParsePrice:
 
     def test_surrounding_whitespace_only_is_still_clean(self) -> None:
         outcome = parse_price("  29.99  ")
-        assert outcome.status is Status.CLEAN
+        assert outcome.status is Status.OK
         assert outcome.reasons == []
 
     def test_currency_matching_is_case_insensitive(self) -> None:
@@ -86,7 +86,7 @@ class TestParsePrice:
 class TestParseQuantity:
     def test_bare_nonnegative_int_is_clean(self) -> None:
         outcome = parse_quantity("5")
-        assert outcome.status is Status.CLEAN
+        assert outcome.status is Status.OK
         assert outcome.value == 5
         assert outcome.reasons == []
 
@@ -137,13 +137,13 @@ class TestParseQuantity:
 class TestParseSku:
     def test_non_blank_is_clean(self) -> None:
         outcome = parse_sku("A1")
-        assert outcome.status is Status.CLEAN
+        assert outcome.status is Status.OK
         assert outcome.value == "A1"
         assert outcome.reasons == []
 
     def test_strips_surrounding_whitespace(self) -> None:
         outcome = parse_sku("  A1  ")
-        assert outcome.status is Status.CLEAN
+        assert outcome.status is Status.OK
         assert outcome.value == "A1"
 
     @pytest.mark.parametrize("raw", ["", "   ", None])
@@ -157,13 +157,13 @@ class TestParseSku:
 class TestParseName:
     def test_non_blank_is_clean(self) -> None:
         outcome = parse_name("Czajnik")
-        assert outcome.status is Status.CLEAN
+        assert outcome.status is Status.OK
         assert outcome.value == "Czajnik"
         assert outcome.reasons == []
 
     def test_strips_surrounding_whitespace(self) -> None:
         outcome = parse_name("  Czajnik  ")
-        assert outcome.status is Status.CLEAN
+        assert outcome.status is Status.OK
         assert outcome.value == "Czajnik"
 
     @pytest.mark.parametrize("raw", ["", "   ", None])

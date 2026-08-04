@@ -29,6 +29,23 @@ class TestCli:
         assert "Traceback" not in captured.err
         assert str(missing) in captured.err
 
+    def test_non_utf8_input_prints_readable_error_and_nonzero_exit(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        input_path = tmp_path / "latin1.csv"
+        input_path.write_bytes(
+            b"sku,name,price,quantity,category\nA1,Caf\xe9,29.99,5,AGD\n"
+        )
+        output_dir = tmp_path / "out"
+
+        exit_code = main(["--input", str(input_path), "--output-dir", str(output_dir)])
+
+        assert exit_code != 0
+        captured = capsys.readouterr()
+        assert "Traceback" not in captured.err
+        assert "UTF-8" in captured.err
+        assert str(input_path) in captured.err
+
     def test_missing_output_dir_is_created_automatically(self, tmp_path: Path) -> None:
         input_path = _write_csv(
             tmp_path, "sku,name,price,quantity,category\nA1,Czajnik,29.99,5,AGD\n"

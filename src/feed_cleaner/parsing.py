@@ -60,7 +60,7 @@ def parse_price(raw: str | None) -> FieldOutcome[PriceValue]:
             reasons=[Reason.PRICE_FORMAT],
         )
 
-    return FieldOutcome(status=Status.CLEAN, value=PriceValue(price=parsed, currency=None))
+    return FieldOutcome(status=Status.OK, value=PriceValue(price=parsed, currency=None))
 
 
 def parse_quantity(raw: str | None) -> FieldOutcome[int]:
@@ -80,7 +80,7 @@ def parse_quantity(raw: str | None) -> FieldOutcome[int]:
             return FieldOutcome(
                 status=Status.REPAIRED, value=abs(int_value), reasons=[Reason.NEGATIVE_QUANTITY]
             )
-        return FieldOutcome(status=Status.CLEAN, value=int_value)
+        return FieldOutcome(status=Status.OK, value=int_value)
 
     comma_used = "," in text
     numeric_text = text.replace(",", ".") if comma_used else text
@@ -109,10 +109,10 @@ def parse_quantity(raw: str | None) -> FieldOutcome[int]:
 def parse_sku(raw: str | None) -> FieldOutcome[str]:
     if raw is None or not raw.strip():
         return FieldOutcome(status=Status.REJECTED, value=None, reasons=[Reason.MISSING_SKU])
-    return FieldOutcome(status=Status.CLEAN, value=raw.strip())
+    return FieldOutcome(status=Status.OK, value=raw.strip())
 
 
 def parse_name(raw: str | None) -> FieldOutcome[str]:
     if raw is None or not raw.strip():
         return FieldOutcome(status=Status.REJECTED, value=None, reasons=[Reason.MISSING_NAME])
-    return FieldOutcome(status=Status.CLEAN, value=raw.strip())
+    return FieldOutcome(status=Status.OK, value=raw.strip())

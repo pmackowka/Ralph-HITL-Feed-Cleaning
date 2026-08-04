@@ -37,10 +37,10 @@ leci surowy `UnicodeDecodeError` i kod `1`.
 
 ### Pliki wyjściowe
 
-- `clean.parquet` — zaakceptowane rekordy (`CLEAN` + `REPAIRED`) po naprawach,
+- `clean.parquet` — zaakceptowane rekordy (`OK` + `REPAIRED`) po naprawach,
   w formacie Parquet. Odrzucone (`REJECTED`) w ogóle tu nie trafiają — są
-  wyłącznie w raporcie jakości poniżej. Uwaga na nazewnictwo: status w kodzie
-  to `CLEAN`, ale odpowiadający licznik w raporcie nazywa się `ok`.
+  wyłącznie w raporcie jakości poniżej. Schemat kolumn jest wyprowadzony
+  z `ProductRecord` (`models.py`), który waliduje też każdy wiersz przed zapisem.
 - `report.json` — raport jakości danych: liczniki `row_counts`
   (total/ok/repaired/rejected) oraz osobno `repaired_reasons` i
   `rejected_reasons` (liczba wystąpień każdego powodu naprawy/odrzucenia).

@@ -50,7 +50,7 @@ def build_report(rows: list[ClassifiedRow]) -> QualityReport:
 
     for row in rows:
         row_counts["total"] += 1
-        if row.status is Status.CLEAN:
+        if row.status is Status.OK:
             row_counts["ok"] += 1
             continue
 

@@ -37,7 +37,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Błąd: plik wejściowy nie istnieje: {input_path}", file=sys.stderr)
         return EXIT_USAGE_ERROR
 
-    rows = load_feed(input_path)
+    try:
+        rows = load_feed(input_path)
+    except UnicodeDecodeError:
+        print(
+            f"Błąd: plik wejściowy nie jest w kodowaniu UTF-8: {input_path}",
+            file=sys.stderr,
+        )
+        return EXIT_USAGE_ERROR
+
     export_to_parquet(rows, output_dir / "clean.parquet")
     report = build_report(rows)
     write_report(report, output_dir / "report.json")

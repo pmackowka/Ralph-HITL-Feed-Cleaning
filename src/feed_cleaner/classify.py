@@ -26,9 +26,9 @@ class ClassifiedRow:
 
 def _parse_category(raw: str | None) -> FieldOutcome[str | None]:
     if raw is None:
-        return FieldOutcome(status=Status.CLEAN, value=None)
+        return FieldOutcome(status=Status.OK, value=None)
     stripped = raw.strip()
-    return FieldOutcome(status=Status.CLEAN, value=stripped or None)
+    return FieldOutcome(status=Status.OK, value=stripped or None)
 
 
 def classify_row(raw: RawRow) -> ClassifiedRow:
@@ -62,7 +62,7 @@ def classify_row(raw: RawRow) -> ClassifiedRow:
     elif Status.REPAIRED in statuses:
         status = Status.REPAIRED
     else:
-        status = Status.CLEAN
+        status = Status.OK
 
     return ClassifiedRow(
         sku=sku_outcome,

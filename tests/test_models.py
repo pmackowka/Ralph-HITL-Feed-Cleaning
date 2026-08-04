@@ -5,8 +5,8 @@ from feed_cleaner.models import FieldOutcome, ProductRecord, Reason, Status
 
 
 def test_field_outcome_clean_defaults_to_no_reasons() -> None:
-    outcome: FieldOutcome[int] = FieldOutcome(status=Status.CLEAN, value=5)
-    assert outcome.status is Status.CLEAN
+    outcome: FieldOutcome[int] = FieldOutcome(status=Status.OK, value=5)
+    assert outcome.status is Status.OK
     assert outcome.value == 5
     assert outcome.reasons == []
 

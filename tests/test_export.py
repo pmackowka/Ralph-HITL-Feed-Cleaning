@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
+from pydantic import ValidationError
 
 from feed_cleaner.classify import classify_row
 from feed_cleaner.export import SCHEMA, export_to_parquet
+from feed_cleaner.models import FieldOutcome, ProductRecord, Status
 
 
 def test_exports_repaired_values_not_raw_text(tmp_path: Path) -> None:
@@ -73,3 +78,25 @@ def test_empty_input_list_writes_valid_empty_parquet(tmp_path: Path) -> None:
     table = pq.read_table(output_path)
     assert table.num_rows == 0
     assert table.schema.equals(SCHEMA)
+
+
+def test_schema_is_derived_from_product_record() -> None:
+    """SCHEMA nie jest pisany ręcznie — dopisanie pola do ProductRecord ma samo
+    dołożyć kolumnę, żeby kształt rekordu miał jedno źródło prawdy.
+    """
+    assert SCHEMA.names == list(ProductRecord.model_fields)
+    assert SCHEMA.field("price").type == pa.float64()
+    assert SCHEMA.field("quantity").type == pa.int64()
+    assert not SCHEMA.field("sku").nullable
+    assert SCHEMA.field("category").nullable
+
+
+def test_accepted_row_missing_required_value_fails_loudly(tmp_path: Path) -> None:
+    """Wiersz zaakceptowany, ale z pustym wymaganym polem, nie może po cichu
+    trafić do Parquet — kontrakt pilnuje ProductRecord tuż przed zapisem.
+    """
+    row = classify_row({"sku": "A1", "name": "Foo", "price": "10", "quantity": "1"})
+    broken = dataclasses.replace(row, price=FieldOutcome(status=Status.OK, value=None))
+
+    with pytest.raises(ValidationError):
+        export_to_parquet([broken], tmp_path / "clean.parquet")

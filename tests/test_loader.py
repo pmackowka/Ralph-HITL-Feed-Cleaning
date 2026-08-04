@@ -21,7 +21,7 @@ class TestLoadFeed:
         path = _write_csv(tmp_path, content, encoding="utf-8-sig")
         result = load_feed(path)
         assert len(result) == 1
-        assert result[0].status is Status.CLEAN
+        assert result[0].status is Status.OK
         assert result[0].sku.value == "A1"
 
     def test_unknown_extra_column_is_ignored(self, tmp_path: Path) -> None:
@@ -32,7 +32,7 @@ class TestLoadFeed:
         path = _write_csv(tmp_path, content)
         result = load_feed(path)
         assert len(result) == 1
-        assert result[0].status is Status.CLEAN
+        assert result[0].status is Status.OK
 
     def test_row_with_wrong_column_count_is_malformed_rest_loads_normally(
         self, tmp_path: Path
@@ -47,7 +47,7 @@ class TestLoadFeed:
         assert len(result) == 2
         assert result[0].status is Status.REJECTED
         assert result[0].reasons == [Reason.MALFORMED_ROW]
-        assert result[1].status is Status.CLEAN
+        assert result[1].status is Status.OK
         assert result[1].sku.value == "A2"
 
     def test_row_with_too_many_columns_is_malformed(self, tmp_path: Path) -> None:
@@ -83,4 +83,4 @@ class TestLoadFeed:
         assert len(result) == 2
         assert result[0].status is Status.REJECTED
         assert result[0].reasons == [Reason.MALFORMED_ROW]
-        assert result[1].status is Status.CLEAN
+        assert result[1].status is Status.OK

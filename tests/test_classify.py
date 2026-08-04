@@ -15,7 +15,7 @@ def _row(
 class TestClassifyRow:
     def test_row_with_no_problems_is_ok(self) -> None:
         result = classify_row(_row())
-        assert result.status is Status.CLEAN
+        assert result.status is Status.OK
         assert result.reasons == []
 
     def test_row_with_repairs_in_multiple_fields_is_repaired_with_all_reasons(self) -> None:
@@ -35,8 +35,8 @@ class TestClassifyRow:
 
     def test_category_missing_is_clean_and_does_not_affect_row_status(self) -> None:
         result = classify_row(_row(category=None))
-        assert result.status is Status.CLEAN
-        assert result.category.status is Status.CLEAN
+        assert result.status is Status.OK
+        assert result.category.status is Status.OK
         assert result.category.value is None
 
 
@@ -44,7 +44,7 @@ class TestDeduplicateBySku:
     def test_two_rows_same_sku_both_otherwise_ok(self) -> None:
         rows = [classify_row(_row()), classify_row(_row())]
         result = deduplicate_by_sku(rows)
-        assert result[0].status is Status.CLEAN
+        assert result[0].status is Status.OK
         assert result[0].reasons == []
         assert result[1].status is Status.REJECTED
         assert result[1].reasons == [Reason.DUPLICATE_SKU]
@@ -52,7 +52,7 @@ class TestDeduplicateBySku:
     def test_three_or_more_rows_same_sku_only_first_kept(self) -> None:
         rows = [classify_row(_row()), classify_row(_row()), classify_row(_row())]
         result = deduplicate_by_sku(rows)
-        assert result[0].status is Status.CLEAN
+        assert result[0].status is Status.OK
         assert result[1].status is Status.REJECTED
         assert result[1].reasons == [Reason.DUPLICATE_SKU]
         assert result[2].status is Status.REJECTED

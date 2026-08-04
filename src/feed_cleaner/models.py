@@ -12,7 +12,7 @@ T = TypeVar("T")
 
 
 class Status(StrEnum):
-    CLEAN = "CLEAN"
+    OK = "OK"
     REPAIRED = "REPAIRED"
     REJECTED = "REJECTED"
 
@@ -33,7 +33,7 @@ class Reason(StrEnum):
 
 @dataclass(frozen=True)
 class FieldOutcome(Generic[T]):
-    """Wynik walidacji/naprawy pojedynczego pola. `reasons` puste dla CLEAN."""
+    """Wynik walidacji/naprawy pojedynczego pola. `reasons` puste dla OK."""
 
     status: Status
     value: T | None
