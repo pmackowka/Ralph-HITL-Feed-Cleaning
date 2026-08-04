@@ -13,11 +13,6 @@ pracy z gotowym narzędziem: `WORKFLOW.md`.
 
 ## `feed-cleaner` — instalacja i uruchomienie
 
-Sam produkt zbudowany przez pętlę Ralpha: mały CLI, który wczytuje "brudny"
-feed produktowy w CSV (duplikaty SKU, ceny jako tekst z przecinkiem/walutą,
-brakujące pola, ujemne ilości, złe typy), naprawia to, co da się naprawić
-automatycznie, odrzuca resztę z podanym powodem, i eksportuje wynik.
-
 ### Instalacja
 
 ```bash
@@ -35,14 +30,17 @@ uv run feed-cleaner --input data/raw/feed.csv --output-dir output/
   tworzony automatycznie, jeśli nie istnieje.
 
 Kod wyjścia `0` oznacza sukces, nawet jeśli część rekordów została odrzucona
-(to normalne zachowanie danych, nie błąd CLI) — niezerowy kod wyjścia
-sygnalizuje wyłącznie błąd użycia (np. nieistniejący plik wejściowy).
+(to normalne zachowanie danych, nie błąd CLI). Kod `2` to błąd użycia
+z czytelnym komunikatem na stderr — np. nieistniejący plik wejściowy.
+Znane ograniczenie: plik w kodowaniu innym niż UTF-8 nie jest obsłużony,
+leci surowy `UnicodeDecodeError` i kod `1`.
 
 ### Pliki wyjściowe
 
-- `clean.parquet` — zaakceptowane rekordy (status OK lub REPAIRED) po
-  naprawach, w formacie Parquet. Odrzucone rekordy (REJECTED) w ogóle się
-  tu nie znajdują — trafiają wyłącznie do raportu jakości poniżej.
+- `clean.parquet` — zaakceptowane rekordy (`CLEAN` + `REPAIRED`) po naprawach,
+  w formacie Parquet. Odrzucone (`REJECTED`) w ogóle tu nie trafiają — są
+  wyłącznie w raporcie jakości poniżej. Uwaga na nazewnictwo: status w kodzie
+  to `CLEAN`, ale odpowiadający licznik w raporcie nazywa się `ok`.
 - `report.json` — raport jakości danych: liczniki `row_counts`
   (total/ok/repaired/rejected) oraz osobno `repaired_reasons` i
   `rejected_reasons` (liczba wystąpień każdego powodu naprawy/odrzucenia).
@@ -142,7 +140,7 @@ po cichu zawęzić zakres i "ogłosić zwycięstwo" przedwcześnie. HITL to spos
 - zadanie niezgodne z opisem/`edge_cases` w PRD.json
 - Ralph tknął pliki spoza `files.include` danego zadania
 
-## Tryb AFK (Away From Keyboard) — `afk-ralph.sh` + Docker Sandboxes (`sbx`)
+## Tryb AFK (Away From Keyboard) — `afk-ralph.sh` + sandbox `sbx`
 
 ### Ściąga — same komendy
 
@@ -212,10 +210,6 @@ Twojego komputera.
 > Sandboksy obsługuje samodzielny CLI `sbx` — osobny program od Dockera,
 > nie wymaga Docker Desktop.
 
-Kroki logowania/uruchamiania poniżej wykonujesz Ty, we własnym terminalu —
-to interaktywne akcje (OAuth w przeglądarce), których nie da się zrobić z tej
-sesji Claude Code.
-
 ### Setup środowiska (jednorazowo)
 
 1. Instalacja (macOS, Docker Desktop **niepotrzebny**): `brew trust docker/tap`
@@ -231,16 +225,14 @@ sesji Claude Code.
    (GitHub), ale nie ma powodu, żeby agent miał nieograniczony dostęp do
    sieci, skoro cały sens sandboksa to ograniczenie szkód. Token loginu
    zostaje na hoście, persystuje między uruchomieniami.
-3. **Auth Claude w środku — potwierdzone empirycznie:** `sbx run claude .`
-   odpala świeżą, niezalogowaną instancję Claude Code w sandboksie
-   (`Not logged in · Run /login`), jak przy zupełnie nowej instalacji.
-   Zwykłe `/login` i logowanie subskrypcją Pro/Max **działa** — rozliczanie
-   zostaje jak dotychczas (subskrypcja), nie przechodzi na płatność per token,
-   mimo że dokumentacja `sbx secret set -g anthropic` sugerowała inaczej.
-   Bonus: sam sandbox to już warstwa izolacji, więc Claude Code w środku
-   domyślnie startuje w trybie "bypass permissions" (zero pytań o zgodę) —
-   dlatego `afk-ralph.sh` nie ma `--permission-mode acceptEdits`, jak ma
-   `ralph-once.sh`.
+3. **Auth Claude w środku:** `sbx run claude .` odpala świeżą, niezalogowaną
+   instancję Claude Code (`Not logged in · Run /login`), jak przy nowej
+   instalacji. Zwykłe `/login` subskrypcją Pro/Max działa — rozliczanie zostaje
+   subskrypcyjne, nie przechodzi na płatność per token, mimo że dokumentacja
+   `sbx secret set -g anthropic` sugerowała inaczej. Sam sandbox to warstwa
+   izolacji, więc Claude Code startuje w środku w trybie "bypass permissions"
+   — w praktyce to jednak nie wystarczyło (model i tak pytał o zgodę na Write),
+   dlatego `afk-ralph.sh` podaje `--dangerously-skip-permissions` jawnie.
 4. Jeśli chcemy, żeby AFK sam pushował na GitHub — komendy niżej **w
    zwykłym terminalu, NIE wewnątrz sesji Claude w sandboksie** (`sbx`/`gh`
    to komendy hosta, sandboksowa sesja sama je odrzuci):
@@ -279,16 +271,16 @@ systemu poza tym katalogiem jest dla agenta niewidoczna.
 Argument (`5`) to limit iteracji — zabezpieczenie przed niekontrolowanym
 kosztem/czasem, gdyby coś poszło w pętlę bez końca. Headless
 `sbx exec ... claude -p "..."` zwraca czysty tekst i kończy się sam (bez
-otwierania sesji interaktywnej, inaczej niż `ralph-once.sh`) — potwierdzone
-empirycznie w terminalu, sygnał `<promise>COMPLETE</promise>` przechodzi
-przez przechwytywanie w zmiennej bashowej nietknięty.
+otwierania sesji interaktywnej, inaczej niż `ralph-once.sh`), a sygnał
+`<promise>COMPLETE</promise>` przechodzi przez przechwytywanie w zmiennej
+bashowej nietknięty.
 
 Skrypt krok po kroku: `set -e` zatrzymuje całość przy pierwszym błędzie,
 zamiast lecieć dalej w niewiadomym stanie. `SANDBOX`/`WORKDIR` to nazwa
 Twojego sandboksa i ścieżka projektu — potrzebne, żeby `sbx exec` wiedział,
 gdzie i w czym uruchomić komendę. Brak argumentu (`$1`) → komunikat użycia
 i `exit 1` — limit iteracji jest obowiązkowy, nie opcjonalny. Pętla `for`
-woła `sbx exec -w "$WORKDIR" "$SANDBOX" claude -p "<prompt zadania>" < /dev/null`
+woła `sbx exec -w "$WORKDIR" "$SANDBOX" claude -p --dangerously-skip-permissions "<prompt zadania>" < /dev/null`
 — `-p` to tryb "print": agent robi swoją robotę (czyta pliki, pisze kod,
 testuje, commituje) i sam kończy proces, zamiast zostawiać otwartą sesję
 (konieczne dla AFK, nikt nie siedzi, żeby ją zamknąć). `< /dev/null` mówi

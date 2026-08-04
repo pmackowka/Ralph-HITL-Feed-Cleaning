@@ -7,7 +7,7 @@
 Mały CLI (Python), który:
 
 1. Wczytuje syntetyczny feed produktowy w CSV (celowo "brudny" — duplikaty SKU, ceny jako tekst z przecinkiem/walutą, brakujące pola, ujemne ilości, złe typy).
-2. Waliduje każdy rekord wg jawnego schematu (Pydantic) i klasyfikuje: OK / do naprawy / do odrzucenia.
+2. Waliduje każdy rekord pole po polu i klasyfikuje: `CLEAN` / `REPAIRED` / `REJECTED`. Schemat `ProductRecord` (Pydantic, `models.py`) opisuje kontrakt docelowy, ale pipeline go nie konstruuje — walidacja per-pole zachowuje informację, KTÓRE pole zawiodło (patrz docstring `classify_row`).
 3. Czyści to, co da się naprawić automatycznie (np. `"29,99 zł"` → `29.99`), odrzuca resztę z podanym powodem.
 4. Eksportuje wynik do Parquet (czyste dane) + osobny raport jakości danych (ile rekordów OK/naprawiono/odrzucono, wg jakiej reguły).
 
@@ -22,18 +22,18 @@ Dane wejściowe: generuję deterministycznym skryptem, **przed** startem pętli 
 
 ## Jak ma działać w pętli — HITL (`ralph-once.sh`)
 
-Zanim cokolwiek zostanie zautomatyzowane bez nadzoru (AFK, Docker sandbox) — najpierw kilka ręcznych iteracji, żeby zbudować zaufanie do promptu.
+Zanim cokolwiek zostanie zautomatyzowane bez nadzoru (AFK, sandbox) — najpierw kilka ręcznych iteracji, żeby zbudować zaufanie do promptu.
 
 1. **Plan mode** (`shift-tab`) w nowej sesji Claude Code — dopytanie o niejasności, zapis `PRD.json` jako lista zadań (każde z: `description`, `files`, `stop_condition`, `edge_cases`, `passes: false`).
 2. Zadania uporządkowane wg ryzyka: **najpierw** schemat walidacji (Pydantic) i strategia dla rekordów wadliwych (odrzuć vs napraw) — to jest decyzja architektoniczna, którą trzeba rozstrzygnąć pod nadzorem, zanim pętla zacznie działać sama. Potem parser, potem eksport, na końcu polish/raport.
-3. Pusty `progress.txt` — pamięć sesyjna na czas trwania tego sprintu, kasowana po zakończeniu.
+3. Pusty `progress.txt` — pamięć Ralpha między iteracjami; wersjonowany w repo, bo historia decyzji z pętli jest warta zachowania.
 4. `ralph-once.sh` uruchamiany pojedynczo:
    - Czyta `PRD.json` + `progress.txt`.
    - Znajduje pierwsze nieukończone zadanie, implementuje TYLKO je.
    - Uruchamia feedback loops (pytest/mypy/ruff) — commit blokowany, jeśli coś nie przechodzi.
    - Commituje, aktualizuje `progress.txt`.
 5. Po każdej iteracji: przegląd diffa i commita, zanim uruchomię kolejną — to jest sedno HITL, uczysz się, jak pętla się zachowuje, zanim oddasz jej stery.
-6. Dopiero gdy kilka iteracji z rzędu zachowuje się zgodnie z oczekiwaniami → przejście do `afk-ralph.sh` w Docker sandboksie (`docker sandbox run claude`), z limitem iteracji.
+6. Dopiero gdy kilka iteracji z rzędu zachowuje się zgodnie z oczekiwaniami → przejście do `afk-ralph.sh` w sandboksie `sbx`, z limitem iteracji.
 7. **Zakres HITL vs AFK:** nadzór i pytanie o zgodę opisane w tej sekcji dotyczą WYŁĄCZNIE `ralph-once.sh` (sesja interaktywna, `--permission-mode acceptEdits`, człowiek siedzi przy terminalu i odpowiada na prompty). `afk-ralph.sh` działa w trybie bezobsługowym (`-p --dangerously-skip-permissions`) — tam narzędzia (Write/Edit/Bash) mają z góry przyznane uprawnienia i model NIE WOLNO pytać o zgodę ani czekać na potwierdzenie; zadanie musi dokończyć w jednej odpowiedzi. Model nie rozpoznaje sam, pod którym skryptem aktualnie działa — jedynym sygnałem jest treść promptu w danym skrypcie, więc to on (nie ogólna kultura HITL opisana wyżej) rozstrzyga o zachowaniu.
 
 ## Oczekiwana jakość kodu
@@ -55,6 +55,9 @@ nie biblioteka publiczna. Konkretnie:
   przy duplikatach SKU, rozróżnienie row-level vs reason-level liczników
   w raporcie) — nie opisuj oczywistości.
 
-## Następny krok
+## Status
 
-Gdy ten zarys zaakceptowany — przygotowanie gotowego promptu startowego do wklejenia w nowej sesji Claude Code (plan mode), obejmującego kroki 1-6 powyżej.
+Zamknięte: 8/8 zadań w `PRD.json` ma `passes: true`, stop condition spełniony
+(pytest/mypy/ruff zielone, raport zgodny z manifestem). Prompty startowe działają
+w obu wariantach — `ralph-once.sh` (HITL) i `afk-ralph.sh` (AFK). Obsługa pętli:
+`README.md`, praca z gotowym CLI: `WORKFLOW.md`.
