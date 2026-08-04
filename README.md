@@ -72,13 +72,18 @@ Code — patrz "Kto co robi" na końcu tego pliku.
 ### Ściąga — same komendy
 
 ```bash
-./ralph-once.sh                                            # 1 iteracja: Ralph robi jedno zadanie z PRD.json
+# --- w ZWYKŁYM TERMINALU (host) ---
+./ralph-once.sh                                             # WCHODZISZ w interaktywną sesję Claude (skrypt to jedna komenda `claude ...`) — Ralph robi jedno zadanie z PRD.json
 # ...poczekaj aż sesja odpowie i skończy...
-/exit                                                       # albo Ctrl+D — zamknij sesję przed kolejnym uruchomieniem
-git show --stat HEAD                                       # co zmienił ostatni commit
-cat progress.txt                                            # notatka Ralpha o tej iteracji
-uv run pytest && uv run mypy src && uv run ruff check .    # niezależna weryfikacja, nie ufaj samemu commitowi
-./ralph-once.sh                                             # jeśli OK — kolejna iteracja
+
+# --- jesteś W SESJI CLAUDE — zadanie skończone, sesja NIE zamyka się sama: ---
+/exit                                                        # albo Ctrl+D — WYJDŹ z powrotem do zwykłego shella
+
+# --- z powrotem w ZWYKŁYM TERMINALU (host) ---
+git show --stat HEAD                                        # co zmienił ostatni commit
+cat progress.txt                                             # notatka Ralpha o tej iteracji
+uv run pytest && uv run mypy src && uv run ruff check .     # niezależna weryfikacja, nie ufaj samemu commitowi
+./ralph-once.sh                                              # jeśli OK — kolejna iteracja (znów WCHODZISZ w sesję)
 ```
 
 ### Co sprawdzić po każdej iteracji i dlaczego
@@ -91,20 +96,18 @@ git show HEAD                # PEŁNY diff ostatniego commita — dokładnie co 
 git diff HEAD~1 HEAD         # to samo co wyżej, inny zapis (przydatne gdy chcesz porównać dowolne dwa punkty)
 ```
 
-- `git show --stat HEAD` — jakie pliki zmienione. Sprawdzasz, czy Ralph
-  ruszył tylko to, co miał w zakresie zadania (`files.include`), a nie
-  poszedł "przy okazji" majstrować gdzie indziej.
-- `git show HEAD` — pełny diff, nie tylko lista plików. To jest to, co
-  naprawdę chcesz przeczytać: dokładna treść zmian, linia po linii, ze
-  znakiem `+`/`-` przy każdej dodanej/usuniętej linijce.
-- `cat progress.txt` — notatka Ralpha o tym, co zrobił i jakie decyzje podjął.
-  To jego "pamięć" między iteracjami — czytasz ją, żeby wiedzieć, czy trafił
-  na coś niejasnego, co wymaga Twojej decyzji, zanim pójdzie dalej.
+- `git show --stat HEAD` — sprawdzasz, czy Ralph ruszył tylko to, co miał w
+  zakresie zadania (`files.include`), a nie poszedł "przy okazji" majstrować
+  gdzie indziej.
+- `git show HEAD` — to jest to, co naprawdę chcesz przeczytać, nie sama lista
+  plików ze `--stat`.
+- `cat progress.txt` — to jego "pamięć" między iteracjami: czytasz ją, żeby
+  wiedzieć, czy trafił na coś niejasnego, co wymaga Twojej decyzji, zanim
+  pójdzie dalej.
 - `PRD.json` — czy właściwe zadanie ma teraz `passes: true`.
 - `uv run pytest && uv run mypy src && uv run ruff check .` — **niezależna
-  weryfikacja własnymi rękami**, nie ufaj samemu zielonemu commitowi. Agent
-  może się mylić co do tego, czy naprawdę wszystko przeszło — odpalenie tego
-  samemu zajmuje kilka sekund i jest jedynym pewnym dowodem.
+  weryfikacja własnymi rękami**: agent może się mylić co do tego, czy
+  naprawdę wszystko przeszło, a odpalenie tego samemu zajmuje kilka sekund.
 
 HITL = człowiek patrzy na każdą iterację na żywo, zanim pozwoli odpalić
 kolejną. Dlaczego to ważne: agent bez nadzoru, przy niejasnym zadaniu, potrafi
@@ -148,21 +151,21 @@ po cichu zawęzić zakres i "ogłosić zwycięstwo" przedwcześnie. HITL to spos
 brew trust docker/tap                       # zaufaj paczkom Dockera w Homebrew
 brew install docker/tap/sbx                 # zainstaluj sbx (bez Docker Desktop)
 sbx login                                   # zaloguj do Dockera, wybierz politykę sieci (Balanced)
-sbx run claude .                            # tworzy sandbox i WCHODZI w interaktywną sesję Claude w środku
+sbx run claude .                            # WEJŚCIE #1 — tworzy sandbox i WCHODZI w interaktywną sesję Claude w środku
 
-# --- teraz jesteś W SESJI CLAUDE, wewnątrz sandboksa ---
+# --- teraz jesteś W SESJI CLAUDE (sesja #1), wewnątrz sandboksa ---
 /login                                      # zaloguj Claude Pro/Max (w środku sandboksa)
-/exit                                        # WYJDŹ z powrotem do zwykłego shella, zanim pójdziesz dalej
+/exit                                        # WYJŚCIE #1 — z powrotem do zwykłego shella, zanim pójdziesz dalej
 
 # --- z powrotem w ZWYKŁYM TERMINALU (host) ---
 brew install gh                             # jeśli `which gh` nic nie pokazuje — potrzebne do kroku niżej
 gh auth login                               # interaktywne logowanie do GitHub (przeglądarka + jednorazowy kod)
 gh auth token | sbx secret set -g github    # opcjonalnie: dostęp do push na GitHub
 sbx stop claude-Ralph-HITL-Feed-Cleaning    # zatrzymaj — sandbox już działał PRZED sekretem, może go nie podłapać bez restartu
-sbx run claude .                            # odpal ponownie — znów WCHODZISZ w sesję Claude w środku
+sbx run claude .                            # WEJŚCIE #2 — odpal ponownie, NOWA sesja Claude (tym razem z sekretem GitHub w środku)
 
-# --- znowu W SESJI CLAUDE — sprawdź że działa (np. git push), potem: ---
-/exit                                        # WYJDŹ z powrotem, zanim odpalisz pętlę AFK
+# --- znowu W SESJI CLAUDE (sesja #2) — sprawdź że działa (np. git push), potem: ---
+/exit                                        # WYJŚCIE #2 — z powrotem, zanim odpalisz pętlę AFK
 
 # --- z powrotem w ZWYKŁYM TERMINALU (host) ---
 sbx ls                                       # sprawdź nazwę i status sandboksa
@@ -206,11 +209,8 @@ limitem iteracji jako zabezpieczeniem. Robimy to w izolowanym środowisku
 szkoda zostaje zamknięta w tym środowisku, a nie rozlewa się na resztę
 Twojego komputera.
 
-> **Uwaga — narzędzie się zmieniło.** Stare `docker sandbox run claude`
-> zostało **zdeprecjonowane i usunięte**. Następca to samodzielny CLI `sbx`
-> — osobny program od Dockera, **nie wymaga już Docker Desktop**. Poniższe
-> komendy zweryfikowane bezpośrednio przez `sbx --help` i realne testy w
-> terminalu (nie z dokumentacji, która bywa nieaktualna), 2026-08-02.
+> Sandboksy obsługuje samodzielny CLI `sbx` — osobny program od Dockera,
+> nie wymaga Docker Desktop.
 
 Kroki logowania/uruchamiania poniżej wykonujesz Ty, we własnym terminalu —
 to interaktywne akcje (OAuth w przeglądarce), których nie da się zrobić z tej
